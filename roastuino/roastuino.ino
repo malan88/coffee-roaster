@@ -39,19 +39,21 @@ void setup() {
   // use Arduino pins 
   pinMode(relay, OUTPUT);
   lcd.begin(16, 2);
-  lcd.print("hello, world!");
   delay(500);
 }
 
 void loop() {
    //write current thermocouple value
    au16data[2] = ((uint16_t) thermocouple.readCelsius()*100);
+   lcd.setCursor(0,0);
+   lcd.print(au16data[2]);
    //poll modbus registers
    slave.poll( au16data, 16 );
    //write relay value using pwm
-   float val = (au16data[4]/100.0);
-   analogWrite(relay, val*255);
    lcd.setCursor(0, 1);
-   lcd.print(val);
+   lcd.print(au16data[4]);
+   
+   analogWrite(relay, (au16data[4]/100.0)*255);
+
    delay(500);
 }

@@ -21,7 +21,8 @@ Adafruit_MAX31855 thermocouple(MAXCLK, MAXCS, MAXDO);
 
 // data array for modbus network sharing
 uint16_t au16data[16] = {
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1 };
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+//  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, -1 };
 
 /**
  *  Modbus object declaration
@@ -41,19 +42,41 @@ void setup() {
   lcd.begin(16, 2);
   delay(500);
 }
+#define TEMP  0
+#define SV    1
+#define KP    2
+#define KI    3
+#define KD    4
+#define FACT  100.0
 
 void loop() {
-   //write current thermocouple value
-   au16data[2] = ((uint16_t) thermocouple.readCelsius()*100);
-   lcd.setCursor(0,0);
-   lcd.print(au16data[2]);
-   //poll modbus registers
+   uint16_t temp = ((uint16_t) thermocouple.readCelsius()*100);
+   au16data[TEMP] = temp;
    slave.poll( au16data, 16 );
-   //write relay value using pwm
-   lcd.setCursor(0, 1);
-   lcd.print(au16data[4]);
    
-   analogWrite(relay, (au16data[4]/100.0)*255);
+   float sv = au16data[SV]/FACT;
+   float kp = au16data[KP]/FACT;
+   float ki = au16data[KI]/FACT;
+   float kd = au16data[KD]/FACT;
+   
+   lcdprint(temp,sv,kp,ki,kd);
+   
+   analogWrite(relay, 0);
 
    delay(500);
+}
+
+void lcdprint(uint16_t temp, float sv, float kp, float ki, float kd) {
+  lcd.setCursor(0,0);
+  lcd.print("t ");
+  lcd.print(temp);
+  lcd.print(" sv ");
+  lcd.print(sv);
+  lcd.setCursor(0,1);
+  lcd.print("p");
+  lcd.print(kp);
+  lcd.print("i");
+  lcd.print(ki);
+  lcd.print("d");
+  lcd.print(kd);
 }

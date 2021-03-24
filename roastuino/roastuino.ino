@@ -1,3 +1,4 @@
+#include <PID_v1.h>
 #include "Adafruit_MAX31855.h"
 #include <ModbusRtu.h>
 #include <LiquidCrystal.h>
@@ -34,11 +35,15 @@ uint16_t au16data[16] = {
 Modbus slave(1,0,0); // this is slave @1 and RS-232 or USB-FTDI
 
 int relay = 5;  
-  
+
+double input, duty, sv, kp=0, ki=0, kd=0;
+PID pid(&input, &duty, &sv, kp, ki, kd, DIRECT);
+
 void setup() {
   slave.begin(19200); // 19200 baud, 8-bits, even, 1-bit stop
   // use Arduino pins 
   pinMode(relay, OUTPUT);
+  pid.SetMode(AUTOMATIC);
   lcd.begin(16, 2);
   delay(500);
 }
@@ -50,33 +55,35 @@ void setup() {
 #define FACT  100.0
 
 void loop() {
-   uint16_t temp = ((uint16_t) thermocouple.readCelsius()*100);
-   au16data[TEMP] = temp;
-   slave.poll( au16data, 16 );
+  input = thermocouple.readCelsius();
+  uint16_t temp = ((uint16_t) input*100);
+  au16data[TEMP] = temp;
+  slave.poll( au16data, 16 );
    
-   float sv = au16data[SV]/FACT;
-   float kp = au16data[KP]/FACT;
-   float ki = au16data[KI]/FACT;
-   float kd = au16data[KD]/FACT;
+  sv = au16data[SV]/FACT;
+  kp = au16data[KP]/FACT;
+  ki = au16data[KI]/FACT;
+  kd = au16data[KD]/FACT;
+  pid.SetTunings(kp,ki,kd);
+  pid.Compute();
+  lcdprint();
    
-   lcdprint(temp,sv,kp,ki,kd);
-   
-   analogWrite(relay, 0);
+  analogWrite(relay, duty);
 
-   delay(500);
+  delay(500);
 }
 
-void lcdprint(uint16_t temp, float sv, float kp, float ki, float kd) {
+void lcdprint() {
   lcd.setCursor(0,0);
-  lcd.print("t ");
-  lcd.print(temp);
   lcd.print(" sv ");
   lcd.print(sv);
+  lcd.print(" d ");
+  lcd.print(duty);
   lcd.setCursor(0,1);
-  lcd.print("p");
+  lcd.print(" ");
   lcd.print(kp);
-  lcd.print("i");
+  lcd.print(" ");
   lcd.print(ki);
-  lcd.print("d");
+  lcd.print(" ");
   lcd.print(kd);
 }
